@@ -9,8 +9,11 @@ pipeline {
         }
 
         stage('Test') {
+            when {
+                branch 'main'   // only run this stage when branch is 'main'
+            }
             steps {
-                echo 'Testing..'
+                echo 'Testing.. (only on main branch)'
             }
         }
 
@@ -21,7 +24,6 @@ pipeline {
         }
     }
 
-    // POST-BUILD ACTIONS
     post {
         success {
             echo 'Pipeline completed successfully!'
