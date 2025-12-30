@@ -1,13 +1,11 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven-3.9.1'
-    }
-
     environment {
         APP_ENV = 'development'
         VERSION = '1.0.0'
+        VENV_DIR = 'venv'
+        DEPLOY_DIR = 'C:\\flask_deploy'
     }
 
     parameters {
@@ -19,35 +17,53 @@ pipeline {
     }
 
     stages {
+
         stage('Build') {
             steps {
-                echo "Building ${VERSION} in ${APP_ENV}"
-                bat 'mvn -v'   // Windows-specific command to print Maven version
+                echo "Building Flask app ${VERSION} in ${APP_ENV}"
+                bat '''
+                python --version
+                python -m venv %VENV_DIR%
+                %VENV_DIR%\\Scripts\\pip install --upgrade pip
+                %VENV_DIR%\\Scripts\\pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Test') {
             when {
-                expression { return params.EXECUTE_TESTS }
+                expression { params.EXECUTE_TESTS }
             }
             steps {
                 echo "Running tests because EXECUTE_TESTS = true"
+                bat '''
+                %VENV_DIR%\\Scripts\\pytest
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
-                echo "Deploying version ${VERSION}"
+                echo "Deploying Flask app version ${VERSION}"
+                bat '''
+                if exist build rmdir /s /q build
+                mkdir build
+                xcopy app.py build\\ /Y
+                xcopy requirements.txt build\\ /Y
+
+                if not exist %DEPLOY_DIR% mkdir %DEPLOY_DIR%
+                xcopy build\\* %DEPLOY_DIR%\\ /Y
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline for ${VERSION} completed successfully!"
+            echo "Pipeline for Flask ${VERSION} completed successfully!"
         }
         failure {
-            echo "Pipeline for ${VERSION} failed."
+            echo "Pipeline for Flask ${VERSION} failed."
         }
         always {
             echo "Pipeline completed (post block)."
